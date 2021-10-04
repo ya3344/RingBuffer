@@ -8,7 +8,7 @@ public:
 public:
 	enum QUEUE_DATA_INDEX
 	{
-		MAX_BUFFER_SIZE = 100,
+		MAX_BUFFER_SIZE = 1000,
 	};
 	enum ERROR_INDEX
 	{
