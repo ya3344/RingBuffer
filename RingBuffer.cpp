@@ -1,6 +1,22 @@
 #include "pch.h"
 #include "RingBuffer.h"
 
+RingBuffer::RingBuffer()
+{
+	mBuffer = new char[MAX_BUFFER_SIZE];
+	_ASSERT(mBuffer != nullptr);
+	memset(mBuffer, 0, MAX_BUFFER_SIZE);
+}
+
+RingBuffer::~RingBuffer()
+{
+	if (mBuffer)
+	{
+		delete[] mBuffer;
+		mBuffer = nullptr;
+	}
+}
+
 int RingBuffer::Enqueue(const char* inputData, int dataSize)
 {
 	int count = 0;
@@ -12,7 +28,7 @@ int RingBuffer::Enqueue(const char* inputData, int dataSize)
 		{
 			return count;
 		}
-		mData[mWritePos] = *inputData;
+		mBuffer[mWritePos] = *inputData;
 		mWritePos = (mWritePos + 1) % MAX_BUFFER_SIZE;
 
 		++count;
@@ -21,7 +37,7 @@ int RingBuffer::Enqueue(const char* inputData, int dataSize)
 		++mUseCount;
 
 		// 에러 처리 사용한 Buffer 한계치 초과
-		if (mUseCount >= MAX_BUFFER_SIZE)
+		if (mUseCount >= MAX_BUFFER_SIZE - 1)
 			return USE_COUNT_OVER_FLOW;
 	}
 
@@ -49,11 +65,11 @@ int RingBuffer::ConfirmDequeue(char* outputData, int dataSize)
 			//readPos가 배열 끝에서 시작으로 넘어갈경우
 			if (rewindCount > 0)
 			{
-				memcpy(compareData, mData + mReadPos, count);
-				memcpy(compareData + count, mData, rewindCount);
+				memcpy(compareData, mBuffer + mReadPos, count);
+				memcpy(compareData + count, mBuffer, rewindCount);
 			}
 			else
-				memcpy(compareData, mData + mReadPos, count);
+				memcpy(compareData, mBuffer + mReadPos, count);
 
 			// Peek함수 호출 후 Output 결과값과 비교 
 			if (memcmp(compareData, outputData, strlen(outputData)) == 0)
@@ -83,11 +99,11 @@ int RingBuffer::ConfirmDequeue(char* outputData, int dataSize)
 
 	if (rewindCount > 0)
 	{
-		memcpy(compareData, mData + mReadPos, count);
-		memcpy(compareData + count, mData, rewindCount);
+		memcpy(compareData, mBuffer + mReadPos, count);
+		memcpy(compareData + count, mBuffer, rewindCount);
 	}
 	else
-		memcpy(compareData, mData + mReadPos, count);
+		memcpy(compareData, mBuffer + mReadPos, count);
 
 	// Peek함수 호출 후 Output 결과값과 비교 
 	if (memcmp(compareData, outputData, strlen(outputData)) == 0)
@@ -120,11 +136,11 @@ int RingBuffer::Peek(char* outputData, int dataSize)
 			//readPos가 배열 끝에서 시작으로 넘어갈경우
 			if (rewindCount > 0)
 			{
-				memcpy(outputData, mData + mReadPos, count);
-				memcpy(outputData + count, mData, rewindCount);
+				memcpy(outputData, mBuffer + mReadPos, count);
+				memcpy(outputData + count, mBuffer, rewindCount);
 			}
 			else
-				memcpy(outputData, mData + mReadPos, count);
+				memcpy(outputData, mBuffer + mReadPos, count);
 
 			totalCount = count + rewindCount;
 
@@ -147,11 +163,11 @@ int RingBuffer::Peek(char* outputData, int dataSize)
 	//readPos가 배열 끝에서 시작으로 넘어갈경우
 	if (rewindCount > 0)
 	{
-		memcpy(outputData, mData + mReadPos, count);
-		memcpy(outputData + count, mData, rewindCount);
+		memcpy(outputData, mBuffer + mReadPos, count);
+		memcpy(outputData + count, mBuffer, rewindCount);
 	}
 	else
-		memcpy(outputData, mData + mReadPos, count);
+		memcpy(outputData, mBuffer + mReadPos, count);
 
 	totalCount = count + rewindCount;
 
@@ -174,11 +190,11 @@ int RingBuffer::Dequeue(char* outputData, int dataSize)
 			//readPos가 배열 끝에서 시작으로 넘어갈경우
 			if (rewindCount > 0)
 			{
-				memcpy(outputData, mData + mReadPos, count);
-				memcpy(outputData + count, mData, rewindCount);
+				memcpy(outputData, mBuffer + mReadPos, count);
+				memcpy(outputData + count, mBuffer, rewindCount);
 			}
 			else
-				memcpy(outputData, mData + mReadPos, count);
+				memcpy(outputData, mBuffer + mReadPos, count);
 
 			//읽은 데이터 총계를 더한다.
 			totalCount = count + rewindCount;
@@ -210,11 +226,11 @@ int RingBuffer::Dequeue(char* outputData, int dataSize)
 	//readPos가 배열 끝에서 시작으로 넘어갈경우
 	if (rewindCount > 0)
 	{
-		memcpy(outputData, mData + mReadPos, count);
-		memcpy(outputData + count, mData, rewindCount);
+		memcpy(outputData, mBuffer + mReadPos, count);
+		memcpy(outputData + count, mBuffer, rewindCount);
 	}
 	else
-		memcpy(outputData, mData + mReadPos, count);
+		memcpy(outputData, mBuffer + mReadPos, count);
 
 	//읽은 데이터 총계를 더한다.
 	totalCount = count + rewindCount;
@@ -244,7 +260,19 @@ int RingBuffer::GetUseSize() const
 	return mUseCount;
 }
 
-bool RingBuffer::MoveReadPos(const int readSize)
+int RingBuffer::GetNotBroken_WriteSize() const
+{
+	if (mWritePos < mReadPos)
+	{
+		return mReadPos - mWritePos - 1;
+	}
+	else
+	{
+		return MAX_BUFFER_SIZE - mWritePos - 1;
+	}
+}
+
+int RingBuffer::MoveReadPos(const int readSize)
 {
 	mReadPos += readSize;
 	mReadPos %= MAX_BUFFER_SIZE;
@@ -252,7 +280,20 @@ bool RingBuffer::MoveReadPos(const int readSize)
 
 	// 에러처리
 	if (mUseCount < 0)
-		return false;
+		return USE_COUNT_UNDER_FLOW;
 
-	return true;
+	return USE_COUNT_NORMAL;
+}
+
+int RingBuffer::MoveWritePos(const int writeSize)
+{
+	mWritePos += writeSize;
+	mWritePos %= MAX_BUFFER_SIZE;
+	mUseCount += writeSize;
+
+	// 에러처리
+	if (mUseCount >= MAX_BUFFER_SIZE - 1)
+		return USE_COUNT_OVER_FLOW;
+
+	return USE_COUNT_NORMAL;
 }
