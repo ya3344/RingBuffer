@@ -19,25 +19,24 @@ int main()
 
 	while (true)
 	{
-		if (leftSize == 0)
+		if (leftSize <= 0)
 		{
 			data = originalData;
 			leftSize = strlen(originalData);
 		}
 
 		inputRand = rand() & leftSize + 1;
-		inputRet = ringBuffer.Enqueue(data, inputRand);
+		inputRet = ringBuffer.Enqueue(data, ringBuffer.GetFreeSize());
 		data += inputRet;
 
 		outputRand = rand() & leftSize + 1;
 
 		ZeroMemory(outputData, strlen(originalData));
-		peekRet = ringBuffer.Peek(outputData, outputRand);
-		leftSize -= inputRet;
-
-		outputRet = ringBuffer.Dequeue(outputData, outputRand);
-
-		if (outputRet > 0)
+		peekRet = ringBuffer.Peek(outputData, ringBuffer.GetUseSize());
+		ringBuffer.MoveReadPos(peekRet);
+		//outputRet = ringBuffer.Dequeue(outputData, ringBuffer.GetUseSize());
+		leftSize -= peekRet;
+		if (peekRet > 0)
 			printf("%s", outputData);
 	}
 }

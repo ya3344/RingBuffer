@@ -8,7 +8,7 @@ public:
 public:
 	enum QUEUE_DATA_INDEX
 	{
-		MAX_BUFFER_SIZE = 1000,
+		MAX_BUFFER_SIZE = 50,
 	};
 	enum ERROR_INDEX
 	{
@@ -24,10 +24,15 @@ public:
 	int Dequeue(char* outputData, int dataSize);
 	int GetFreeSize() const;
 	int GetUseSize() const;
+	int GetReadSize() const { return mReadPos; }
+	int GetWriteSize() const { return mWritePos; }
 	int GetNotBroken_WriteSize() const;
 	int MoveReadPos(const int readSize);
 	int MoveWritePos(const int writeSize);
 	char* GetBufferPtr(void) const { return mBuffer + mWritePos; }
+
+
+
 
 private:
 	int mReadPos = 0;

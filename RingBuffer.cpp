@@ -1,10 +1,13 @@
 #include "pch.h"
 #include "RingBuffer.h"
 
+/*
+ReadPos 위치는 비어있는 상태이고
+WritePos 위치는 비어져 있는 상태이다.
+*/
 RingBuffer::RingBuffer()
 {
 	mBuffer = new char[MAX_BUFFER_SIZE];
-	_ASSERT(mBuffer != nullptr);
 	memset(mBuffer, 0, MAX_BUFFER_SIZE);
 }
 
@@ -28,6 +31,7 @@ int RingBuffer::Enqueue(const char* inputData, int dataSize)
 		{
 			return count;
 		}
+
 		mBuffer[mWritePos] = *inputData;
 		mWritePos = (mWritePos + 1) % MAX_BUFFER_SIZE;
 
@@ -37,7 +41,7 @@ int RingBuffer::Enqueue(const char* inputData, int dataSize)
 		++mUseCount;
 
 		// 에러 처리 사용한 Buffer 한계치 초과
-		if (mUseCount >= MAX_BUFFER_SIZE - 1)
+		if (mUseCount >= MAX_BUFFER_SIZE)
 			return USE_COUNT_OVER_FLOW;
 	}
 
@@ -266,10 +270,23 @@ int RingBuffer::GetNotBroken_WriteSize() const
 	{
 		return mReadPos - mWritePos - 1;
 	}
+	else if (mWritePos == mReadPos)
+	{
+		return MAX_BUFFER_SIZE - 1;
+	}
 	else
 	{
 		return MAX_BUFFER_SIZE - mWritePos - 1;
 	}
+	if (mReadPos - mWritePos < 0)
+	{
+		return MAX_BUFFER_SIZE + (mReadPos - mWritePos);
+	}
+	else if (mReadPos - mWritePos > 0)
+	{
+
+	}
+	
 }
 
 int RingBuffer::MoveReadPos(const int readSize)
