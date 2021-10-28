@@ -8,13 +8,16 @@ public:
 public:
 	enum QUEUE_DATA_INDEX
 	{
-		MAX_BUFFER_SIZE = 50,
+		MAX_BUFFER_SIZE = 50000,
 	};
 	enum ERROR_INDEX
 	{
 		USE_COUNT_NORMAL = 0,
 		USE_COUNT_OVER_FLOW = -1,
 		USE_COUNT_UNDER_FLOW = -2,
+		DATA_FULL = -3,
+		DATA_FULL_ERROR = -4,
+		DATA_LACK = -5,
 	};
 
 public:
@@ -31,13 +34,20 @@ public:
 	int MoveWritePos(const int writeSize);
 	char* GetBufferPtr(void) const { return mBuffer + mWritePos; }
 
-
-
+// Lock 관련 함수
+public:
+	int LockEnqueue(const char* inputData, int dataSize);
+	int LockDequeue(char* outputData, int dataSize);
 
 private:
 	int mReadPos = 0;
 	int mWritePos = 0;
-	int mUseCount = 0;
+	long mUseCount = 0;
 	char* mBuffer = nullptr;
+
+// Lock 관련 변수(SRW Lock)
+private:
+	SRWLOCK mSRW_EnqueueLock;
+	SRWLOCK mSRW_DequeueLock;
 };
 
