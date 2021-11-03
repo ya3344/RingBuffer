@@ -378,14 +378,13 @@ int RingBuffer::LockDequeue(char* outputData, int dataSize)
 	int totalCount = 0;
 
 	AcquireSRWLockExclusive(&mSRW_DequeueLock);
-	readPos = mReadPos;
 
 	if (mUseCount < dataSize || dataSize == 0)
 	{
 		ReleaseSRWLockExclusive(&mSRW_DequeueLock);
 		return DATA_LACK;
 	}
-	//readPos = mReadPos;
+	readPos = mReadPos;
 
 	while (dataSize != 0)
 	{
