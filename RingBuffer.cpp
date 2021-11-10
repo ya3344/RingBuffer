@@ -278,7 +278,22 @@ int RingBuffer::GetUseSize() const
 
 int RingBuffer::GetNotBroken_WriteSize() const
 {
+	int notBroken_writePos = 0;
+
 	if (mWritePos < mReadPos)
+	{
+		notBroken_writePos = mReadPos - (mWritePos + 1);
+	}
+	else
+	{
+		notBroken_writePos = MAX_BUFFER_SIZE - mWritePos;
+		if (mReadPos == 0)
+		{
+			notBroken_writePos -= 1;
+		}
+	}
+	
+	/*if (mWritePos < mReadPos)
 	{
 		return mReadPos - mWritePos - 1;
 	}
@@ -297,8 +312,17 @@ int RingBuffer::GetNotBroken_WriteSize() const
 	else if (mReadPos - mWritePos > 0)
 	{
 
-	}
-	
+	}*/
+	return notBroken_writePos;
+}
+
+int RingBuffer::GetBroken_WriteSize() const
+{
+	int writePos = mWritePos;
+
+	if(writePos + 1 )
+
+	return 0;
 }
 
 int RingBuffer::MoveReadPos(const int readSize)
@@ -325,6 +349,15 @@ int RingBuffer::MoveWritePos(const int writeSize)
 		return USE_COUNT_OVER_FLOW;
 
 	return USE_COUNT_NORMAL;
+}
+
+char* RingBuffer::GetBroken_BufferPtr(void)
+{
+	int writePos = mWritePos;
+
+	writePos = (writePos + 1) % MAX_BUFFER_SIZE;
+
+	return mBuffer + writePos;
 }
 
 int RingBuffer::LockEnqueue(const char* inputData, int dataSize)

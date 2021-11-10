@@ -30,10 +30,11 @@ public:
 	int GetReadSize() const { return mReadPos; }
 	int GetWriteSize() const { return mWritePos; }
 	int GetNotBroken_WriteSize() const;
+	int GetBroken_WriteSize() const;
 	int MoveReadPos(const int readSize);
 	int MoveWritePos(const int writeSize);
-	char* GetBufferPtr(void) const { return mBuffer + mWritePos; }
-
+	char* GetNotBroken_BufferPtr(void) const { return mBuffer + mWritePos; }
+	char* GetBroken_BufferPtr(void);
 // Lock 관련 함수
 public:
 	int LockEnqueue(const char* inputData, int dataSize);
