@@ -5,10 +5,10 @@
 ReadPos 위치는 채워져있을수도 있고 비워져 있을 수 있는 상태이다.(읽고 다음위치 이동)
 WritePos 위치는 비어져 있는 상태이다.(쓰기 진행 후 이동)
 */
-RingBuffer::RingBuffer()
+RingBuffer::RingBuffer(const unsigned int bufferSize)
 {
-	mBuffer = new char[MAX_BUFFER_SIZE];
-	memset(mBuffer, 0, MAX_BUFFER_SIZE);
+	mBuffer = new char[bufferSize];
+	memset(mBuffer, 0, bufferSize);
 	InitializeSRWLock(&mSRW_EnqueueLock);
 	InitializeSRWLock(&mSRW_DequeueLock);
 }
@@ -318,11 +318,21 @@ int RingBuffer::GetNotBroken_WriteSize() const
 
 int RingBuffer::GetBroken_WriteSize() const
 {
-	int writePos = mWritePos;
+	int writePos = 0;
 
-	if(writePos + 1 )
+	if (mWritePos < mReadPos)
+	{
+		return 0;
+	}
+	else
+	{
+		writePos = mReadPos - 1;
 
-	return 0;
+		if (writePos <= 0)
+			writePos = 0;
+	}
+
+	return writePos;
 }
 
 int RingBuffer::MoveReadPos(const int readSize)
@@ -353,11 +363,7 @@ int RingBuffer::MoveWritePos(const int writeSize)
 
 char* RingBuffer::GetBroken_BufferPtr(void)
 {
-	int writePos = mWritePos;
-
-	writePos = (writePos + 1) % MAX_BUFFER_SIZE;
-
-	return mBuffer + writePos;
+	return mBuffer + 0;
 }
 
 int RingBuffer::LockEnqueue(const char* inputData, int dataSize)

@@ -2,13 +2,13 @@
 class RingBuffer
 {
 public:
-	RingBuffer();
+	explicit RingBuffer(const unsigned int bufferSize = MAX_BUFFER_SIZE);
 	~RingBuffer();
 
 public:
 	enum QUEUE_DATA_INDEX
 	{
-		MAX_BUFFER_SIZE = 10000,
+		MAX_BUFFER_SIZE = 50000,
 	};
 	enum ERROR_INDEX
 	{
@@ -34,6 +34,7 @@ public:
 	int MoveReadPos(const int readSize);
 	int MoveWritePos(const int writeSize);
 	char* GetNotBroken_BufferPtr(void) const { return mBuffer + mWritePos; }
+	char* GetBufferPtr(void) const { return mBuffer + mReadPos; }
 	char* GetBroken_BufferPtr(void);
 // Lock 관련 함수
 public:
