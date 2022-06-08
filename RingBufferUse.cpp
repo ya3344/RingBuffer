@@ -18,8 +18,6 @@ enum THRAD_INDEX
 	WORK_THREAD_1,
 	WORK_THREAD_2,
 	WORK_THREAD_3,
-	//WORK_THREAD_4,
-	//WORK_THREAD_5,
 	THREAD_MAX
 };
 
@@ -64,20 +62,18 @@ unsigned __stdcall WorkThread(void* arguments)
 	{
 		WaitForSingleObject(gWorkMenualEvent, INFINITE);
 
-		//printf("Start threadID:%d\n", GetCurrentThreadId());
-		AcquireSRWLockExclusive(&gSRW_Lock);
-
 		dequeueRet = gMsgQueue.Dequeue(outputData, sizeof(msgHeadInfo));
 		if (dequeueRet <= 0)
 		{
-			//printf("dequeueRet 0 threadID:%d\n", GetCurrentThreadId());
+			printf("dequeueRet 0 threadID:%d\n", GetCurrentThreadId());
 			ResetEvent(gWorkMenualEvent);
 			ReleaseSRWLockExclusive(&gSRW_Lock);
 			continue;
 		}
 
 		msgHeadInfo = *(MsgHeadInfo*)outputData;
-		/*printf("outputData threadID:%d type:%d length:%d use Size:%d\n", GetCurrentThreadId(), msgHeadInfo.type,
+		/*printf("outputData threadID:%d type:%d length:%d use Size:%d\n", 
+			GetCurrentThreadId(), msgHeadInfo.type,
 			msgHeadInfo.strLength, gMsgQueue.GetUseSize());*/
 
 		if (msgHeadInfo.type == MSG_TYPE_ADD_STR)
@@ -85,63 +81,40 @@ unsigned __stdcall WorkThread(void* arguments)
 			memset(stringData, 0, sizeof(stringData));
 			dequeueRet = gMsgQueue.Dequeue((char*)stringData, msgHeadInfo.strLength);
 		}
-	/*	else if (msgHeadInfo.type == MSG_TYPE_QUIT)
-		{
-			wprintf(L"MSG_TYPE_QUIT\n");
-			SetEvent(gWorkMenualEvent);
-			ReleaseSRWLockExclusive(&gSRW_Lock);
-			return 0;
-		}*/
-			
 
-		ReleaseSRWLockExclusive(&gSRW_Lock);
+		//ReleaseSRWLockExclusive(&gSRW_Lock);
 		
 		switch (msgHeadInfo.type)
 		{
 		case MSG_TYPE_ADD_STR:
 			{
-				//memset(stringData, 0, sizeof(stringData));
-				//dequeueRet = gMsgQueue.LockDequeue((char*)stringData, msgHeadInfo.strLength);
-				//wprintf(L"stringData threadID:%d stringData:%s\n", GetCurrentThreadId(), stringData);
-
-				/*if (dequeueRet <= 0)
-				{
-					_ASSERT(false);
-				}*/
-				AcquireSRWLockExclusive(&gSRW_Lock);
 				gList.emplace_back(stringData);
-				ReleaseSRWLockExclusive(&gSRW_Lock);
 			}
 			break;
 		case MSG_TYPE_DEL_STR:
 			{
 				if (gList.size() > 0)
 				{
-					AcquireSRWLockExclusive(&gSRW_Lock);
 					gList.pop_front();
-					ReleaseSRWLockExclusive(&gSRW_Lock);
 				}
 			}
 			break;
 		case MSG_TYPE_PRINT_LIST:
 			{
-				AcquireSRWLockShared(&gSRW_Lock);
 				if (gList.size() <= 0)	// List Size가 0보다
 				{
-					ReleaseSRWLockShared(&gSRW_Lock);	
+					//ReleaseSRWLockShared(&gSRW_Lock);	
 					ResetEvent(gWorkMenualEvent);
 					continue;
 				}
 				
 				wprintf(L"List:");
-				//AcquireSRWLockExclusive(&gSRW_Lock);
+
 				for (wstring string : gList)
 				{
 					wprintf(L" [%s]", string.c_str());
 				}
 				wprintf(L" List Size:%d Thread ID:%d\n", (int)gList.size(), GetCurrentThreadId());
-				ReleaseSRWLockShared(&gSRW_Lock);
-				//ReleaseSRWLockExclusive(&gSRW_Lock);
 			}
 			break;
 		case MSG_TYPE_QUIT:
@@ -156,7 +129,6 @@ unsigned __stdcall WorkThread(void* arguments)
 			return 0;
 		}
 		InterlockedIncrement(&gTPS_Conut); // tps 카운트
-		//ReleaseSRWLockExclusive(&gSRW_Lock);
 
 		ResetEvent(gWorkMenualEvent);
 	}
@@ -183,13 +155,9 @@ int main()
 	InitializeSRWLock(&gSRW_Lock);
 
 	thread[WORK_THREAD] = (HANDLE)_beginthreadex(NULL, 0, &WorkThread, NULL, 0, &threadID[WORK_THREAD]);
-	thread[WORK_THREAD_1] = (HANDLE)_beginthreadex(NULL, 0, &WorkThread, NULL, 0, &threadID[WORK_THREAD_1]);
-	thread[WORK_THREAD_2] = (HANDLE)_beginthreadex(NULL, 0, &WorkThread, NULL, 0, &threadID[WORK_THREAD_2]);
-	thread[WORK_THREAD_3] = (HANDLE)_beginthreadex(NULL, 0, &WorkThread, NULL, 0, &threadID[WORK_THREAD_3]);
-	//thread[WORK_THREAD_4] = (HANDLE)_beginthreadex(NULL, 0, &WorkThread, NULL, 0, &threadID[WORK_THREAD_4]);
-	//thread[WORK_THREAD_5] = (HANDLE)_beginthreadex(NULL, 0, &WorkThread, NULL, 0, &threadID[WORK_THREAD_5]);
-
-
+	//thread[WORK_THREAD_1] = (HANDLE)_beginthreadex(NULL, 0, &WorkThread, NULL, 0, &threadID[WORK_THREAD_1]);
+	//thread[WORK_THREAD_2] = (HANDLE)_beginthreadex(NULL, 0, &WorkThread, NULL, 0, &threadID[WORK_THREAD_2]);
+	//thread[WORK_THREAD_3] = (HANDLE)_beginthreadex(NULL, 0, &WorkThread, NULL, 0, &threadID[WORK_THREAD_3]);
 
 	while (true)
 	{
@@ -201,9 +169,9 @@ int main()
 			{
 				gMsgQueue.Enqueue((char*)&msgHeadInfo, sizeof(msgHeadInfo));
 			}
-			AcquireSRWLockShared(&gSRW_Lock);
+			//AcquireSRWLockShared(&gSRW_Lock);
 			wprintf(L"MsgQ FreeSize:%d MsgQ UseSize:%d TPS:%d\n", gMsgQueue.GetFreeSize(), gMsgQueue.GetUseSize(), gTPS_Conut);
-			ReleaseSRWLockShared(&gSRW_Lock);
+			//ReleaseSRWLockShared(&gSRW_Lock);
 			SetEvent(gWorkMenualEvent);
 			break;
 		}
@@ -212,18 +180,17 @@ int main()
 		++msgCount;
 		if (msgCount % waitTimeMS == 0) // 1초마다 출력
 		{
-			AcquireSRWLockShared(&gSRW_Lock);
-			wprintf(L"MsgQ FreeSize:%d MsgQ UseSize:%d TPS:%d\n", gMsgQueue.GetFreeSize(), gMsgQueue.GetUseSize(), gTPS_Conut);
-			ReleaseSRWLockShared(&gSRW_Lock);
+			wprintf(L"MsgQ FreeSize:%d MsgQ UseSize:%d TPS:%d\n", 
+				gMsgQueue.GetFreeSize(), gMsgQueue.GetUseSize(), gTPS_Conut);
 			InterlockedExchange(&gTPS_Conut, 0);
 		}
 
-		msgHeadInfo.type = (short)typeRange(mtRand)/*MSG_TYPE_ADD_STR*/;
+		msgHeadInfo.type = (short)typeRange(mtRand);
+		msgHeadInfo.strLength = 0;
 		if (msgHeadInfo.type == MSG_TYPE_ADD_STR)
 		{
 			msgHeadInfo.strLength = (short)(lengthRange(mtRand) * 2);
 		}
-		
 		gMsgQueue.Enqueue((char*)&msgHeadInfo, sizeof(msgHeadInfo));
 		if (msgHeadInfo.type == MSG_TYPE_ADD_STR)
 		{

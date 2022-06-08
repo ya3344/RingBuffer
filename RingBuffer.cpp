@@ -5,12 +5,13 @@
 ReadPos 위치는 채워져있을수도 있고 비워져 있을 수 있는 상태이다.(읽고 다음위치 이동)
 WritePos 위치는 비어져 있는 상태이다.(쓰기 진행 후 이동)
 */
-RingBuffer::RingBuffer(const unsigned int bufferSize)
+RingBuffer::RingBuffer(const long bufferSize)
 {
 	mBuffer = new char[bufferSize];
 	memset(mBuffer, 0, bufferSize);
 	InitializeSRWLock(&mSRW_EnqueueLock);
 	InitializeSRWLock(&mSRW_DequeueLock);
+	mMaxBufferSize = bufferSize;
 }
 
 RingBuffer::~RingBuffer()
@@ -31,22 +32,22 @@ int RingBuffer::Enqueue(const char* inputData, int dataSize)
 	while (dataSize != 0)
 	{
 		// 데이터 꽉 참
-		if ((mWritePos + 1) % MAX_BUFFER_SIZE == mReadPos)
+		if ((mWritePos + 1) % mMaxBufferSize == mReadPos)
 		{
 			return DATA_FULL_ERROR;
 		}
 
 		mBuffer[mWritePos] = *inputData;
-		mWritePos = (mWritePos + 1) % MAX_BUFFER_SIZE;
+		mWritePos = (mWritePos + 1) % mMaxBufferSize;
 
 		++count;
 		++inputData;
 		--dataSize;
 	}
 	InterlockedAdd(&mUseCount, count);
-	//mUseCount += count;
+
 	// 에러 처리 사용한 Buffer 한계치 초과
-	if (mUseCount >= MAX_BUFFER_SIZE)
+	if (mUseCount >= mMaxBufferSize)
 		return USE_COUNT_OVER_FLOW;
 
 	return count;
@@ -92,7 +93,7 @@ int RingBuffer::ConfirmDequeue(char* outputData, int dataSize)
 			}
 		}
 
-		readPos = (readPos + 1) % MAX_BUFFER_SIZE;
+		readPos = (readPos + 1) % mMaxBufferSize;
 
 		if (isPosInit == true)
 			++rewindCount;
@@ -158,7 +159,7 @@ int RingBuffer::Peek(char* outputData, int dataSize)
 			return totalCount;
 		}
 
-		readPos = (readPos + 1) % MAX_BUFFER_SIZE;
+		readPos = (readPos + 1) % mMaxBufferSize;
 
 		if (isPosInit == true)
 			++rewindCount;
@@ -218,14 +219,14 @@ int RingBuffer::Dequeue(char* outputData, int dataSize)
 
 			//읽은 만큼 UseCount 감소
 			InterlockedAdd(&mUseCount, -totalCount);
-			//mUseCount = mUseCount - totalCount;
+
 			if (mUseCount < 0)
 				return USE_COUNT_UNDER_FLOW;
 
 			return totalCount;
 		}
 
-		readPos = (readPos + 1) % MAX_BUFFER_SIZE;
+		readPos = (readPos + 1) % mMaxBufferSize;
 
 		if (isPosInit == true)
 			++rewindCount;
@@ -255,7 +256,7 @@ int RingBuffer::Dequeue(char* outputData, int dataSize)
 
 	//읽은 만큼 UseCount 감소
 	InterlockedAdd(&mUseCount, -totalCount);
-	//mUseCount = mUseCount - totalCount;
+
 	if (mUseCount < 0)
 		return USE_COUNT_UNDER_FLOW;
 
@@ -264,7 +265,7 @@ int RingBuffer::Dequeue(char* outputData, int dataSize)
 
 int RingBuffer::GetFreeSize() const
 {
-	int freeSize = MAX_BUFFER_SIZE - mUseCount;
+	int freeSize = mMaxBufferSize - mUseCount;
 
 	freeSize -= 1; // 1byte는 사용 못하는 공간
 
@@ -286,33 +287,13 @@ int RingBuffer::GetNotBroken_WriteSize() const
 	}
 	else
 	{
-		notBroken_writePos = MAX_BUFFER_SIZE - mWritePos;
+		notBroken_writePos = mMaxBufferSize - mWritePos;
 		if (mReadPos == 0)
 		{
 			notBroken_writePos -= 1;
 		}
-	}
+	} 
 	
-	/*if (mWritePos < mReadPos)
-	{
-		return mReadPos - mWritePos - 1;
-	}
-	else if (mWritePos == mReadPos)
-	{
-		return MAX_BUFFER_SIZE - 1;
-	}
-	else
-	{
-		return MAX_BUFFER_SIZE - mWritePos - 1;
-	}
-	if (mReadPos - mWritePos < 0)
-	{
-		return MAX_BUFFER_SIZE + (mReadPos - mWritePos);
-	}
-	else if (mReadPos - mWritePos > 0)
-	{
-
-	}*/
 	return notBroken_writePos;
 }
 
@@ -338,7 +319,7 @@ int RingBuffer::GetBroken_WriteSize() const
 int RingBuffer::MoveReadPos(const int readSize)
 {
 	mReadPos += readSize;
-	mReadPos %= MAX_BUFFER_SIZE;
+	mReadPos %= mMaxBufferSize;
 	mUseCount -= readSize;
 
 	// 에러처리
@@ -351,11 +332,11 @@ int RingBuffer::MoveReadPos(const int readSize)
 int RingBuffer::MoveWritePos(const int writeSize)
 {
 	mWritePos += writeSize;
-	mWritePos %= MAX_BUFFER_SIZE;
+	mWritePos %= mMaxBufferSize;
 	mUseCount += writeSize;
 
 	// 에러처리
-	if (mUseCount >= MAX_BUFFER_SIZE - 1)
+	if (mUseCount >= mMaxBufferSize - 1)
 		return USE_COUNT_OVER_FLOW;
 
 	return USE_COUNT_NORMAL;
@@ -364,6 +345,13 @@ int RingBuffer::MoveWritePos(const int writeSize)
 char* RingBuffer::GetBroken_BufferPtr(void)
 {
 	return mBuffer + 0;
+}
+
+void RingBuffer::Clear()
+{
+	mReadPos = 0;
+	mWritePos = 0;
+	mUseCount = 0;
 }
 
 int RingBuffer::LockEnqueue(const char* inputData, int dataSize)
@@ -380,26 +368,26 @@ int RingBuffer::LockEnqueue(const char* inputData, int dataSize)
 	while (dataSize != 0)
 	{
 		// 데이터 꽉 참
-		if ((mWritePos + 1) % MAX_BUFFER_SIZE == mReadPos)
+		if ((mWritePos + 1) % mMaxBufferSize == mReadPos)
 		{
-			ReleaseSRWLockExclusive(&mSRW_EnqueueLock);
 			mWritePos -= count;
+			ReleaseSRWLockExclusive(&mSRW_EnqueueLock);
 			return DATA_FULL_ERROR;
 		}
 
 		mBuffer[mWritePos] = *inputData;
-		mWritePos = (mWritePos + 1) % MAX_BUFFER_SIZE;
+		mWritePos = (mWritePos + 1) % mMaxBufferSize;
 
 		++count;
 		++inputData;
 		--dataSize;
 	}
+	ReleaseSRWLockExclusive(&mSRW_EnqueueLock);
 	// 버퍼에 담은 count 만큼 UseCount 증가
 	InterlockedAdd(&mUseCount, count);
-	ReleaseSRWLockExclusive(&mSRW_EnqueueLock);
-
+	
 	// 에러 처리 사용한 Buffer 한계치 초과
-	if (mUseCount >= MAX_BUFFER_SIZE)
+	if (mUseCount >= mMaxBufferSize)
 	{
 		ReleaseSRWLockExclusive(&mSRW_EnqueueLock);
 		return USE_COUNT_OVER_FLOW;
@@ -458,7 +446,7 @@ int RingBuffer::LockDequeue(char* outputData, int dataSize)
 			return totalCount;
 		}
 
-		readPos = (readPos + 1) % MAX_BUFFER_SIZE;
+		readPos = (readPos + 1) % mMaxBufferSize;
 
 		if (isPosInit == true)
 			++rewindCount;

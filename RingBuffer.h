@@ -2,7 +2,7 @@
 class RingBuffer
 {
 public:
-	explicit RingBuffer(const unsigned int bufferSize = MAX_BUFFER_SIZE);
+	explicit RingBuffer(const long bufferSize = MAX_BUFFER_SIZE);
 	~RingBuffer();
 
 public:
@@ -36,6 +36,7 @@ public:
 	char* GetNotBroken_BufferPtr(void) const { return mBuffer + mWritePos; }
 	char* GetBufferPtr(void) const { return mBuffer + mReadPos; }
 	char* GetBroken_BufferPtr(void);
+	void Clear();
 // Lock 관련 함수
 public:
 	int LockEnqueue(const char* inputData, int dataSize);
@@ -46,6 +47,7 @@ private:
 	int mWritePos = 0;
 	long mUseCount = 0;
 	char* mBuffer = nullptr;
+	long mMaxBufferSize = 0;
 
 // Lock 관련 변수(SRW Lock)
 private:
